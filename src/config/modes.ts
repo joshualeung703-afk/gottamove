@@ -20,7 +20,7 @@ export const MODES: Record<ModeId, ModeMeta> = {
   bolt: { label: 'Bolt', color: '#34d186', co2PerKm: 110 },
 }
 
-/** Official HSL vehicle colours, keyed by OTP leg mode. */
+/** Official HSL vehicle colours, keyed by OTP leg mode, plus the rides that link up with them in mixed trips. */
 export const LEG_COLORS: Record<string, string> = {
   BUS: '#007ac9',
   TRAM: '#00985f',
@@ -28,7 +28,9 @@ export const LEG_COLORS: Record<string, string> = {
   RAIL: '#8c4799',
   FERRY: '#00b9e4',
   WALK: '#aab2c0',
-  BICYCLE: '#fcb919',
+  BICYCLE: MODES.bike.color,
+  CITYBIKE: MODES.citybike.color,
+  SCOOTER: MODES.scooter.color,
 }
 
 // Options that share a road route (own bike + scooter, taxi + Uber + Bolt) each get their own beam,
@@ -42,4 +44,8 @@ export const BEAM_STYLE = {
   uber: { offset: -12 },
   bolt: { offset: -16 },
   transit: { offset: 0 },
+  // Mixed trips are drawn on their own (Mix tab), side by side where they share a ride.
+  scooterMix: { offset: -6 },
+  bikeMix: { offset: 0 },
+  citybikeMix: { offset: 6 },
 }

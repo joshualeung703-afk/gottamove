@@ -33,8 +33,14 @@ export const TRAFFIC_FACTOR = 1.25
 
 export const SCOOTER = { unlock: 1.0, perMin: 0.3, range: [0.85, 1.2] as [number, number], speedVsBike: 0.85 }
 
+/** One scooter ride, before the `range` spread. */
+export const scooterPrice = (min: number) => SCOOTER.unlock + SCOOTER.perMin * min
+
 /** HSL city bikes: day pass covers 30 min rides, €1 for each extra 30 min. Season 1 Apr – 31 Oct. */
 export const CITYBIKE = { dayPass: 5, includedMin: 30, extraPer30: 1, season: { fromMonth: 3, toMonth: 9 } }
+
+export const cityBikePrice = (rideMin: number) =>
+  CITYBIKE.dayPass + Math.max(0, Math.ceil((rideMin - CITYBIKE.includedMin) / 30)) * CITYBIKE.extraPer30
 
 export function isTaxiNightRate(d = new Date()) {
   const h = d.getHours()

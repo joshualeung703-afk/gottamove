@@ -14,6 +14,9 @@ export class ApiKeyError extends Error {
   }
 }
 
+/** The planner answered fine but found no trip with these modes (too short, too far, across water …). */
+export class NoRouteError extends Error {}
+
 /** Digitransit's gateway sometimes answers 502/503/504, or rate-limits, for a moment. Those are worth a quick retry. */
 const RETRY_STATUS = new Set([429, 502, 503, 504])
 const RETRY_DELAYS_MS = [400, 1200]
@@ -133,7 +136,7 @@ async function plan(from: Place, to: Place, modes: object, first: number, signal
   const itineraries = (conn.edges as { node: OtpItinerary }[]).map((e) => e.node)
   if (!itineraries.length) {
     const err = conn.routingErrors?.[0]
-    throw new Error(err ? humanRoutingError(err.code, err.description) : 'No route found')
+    throw new NoRouteError(err ? humanRoutingError(err.code, err.description) : 'No route found')
   }
   return itineraries
 }
@@ -148,6 +151,14 @@ function humanRoutingError(code: string, description: string) {
 
 export const planTransit = (from: Place, to: Place, signal?: AbortSignal) =>
   plan(from, to, { transitOnly: true }, 3, signal)
+
+/** Cycle to a bike park at a stop, then public transport. HSL's planner has no scooter data, so this stands in for scooters too. */
+export const planBikeAndRide = (from: Place, to: Place, signal?: AbortSignal) =>
+  plan(from, to, { transitOnly: true, transit: { access: ['BICYCLE_PARKING'] } }, 5, signal)
+
+/** HSL city bikes to and from public transport (rentals need walking allowed alongside, as above). */
+export const planCityBikeAndRide = (from: Place, to: Place, signal?: AbortSignal) =>
+  plan(from, to, { transitOnly: true, transit: { access: ['BICYCLE_RENTAL', 'WALK'], egress: ['BICYCLE_RENTAL', 'WALK'] } }, 5, signal)
 
 export const planDirect = (from: Place, to: Place, mode: 'WALK' | 'BICYCLE' | 'BICYCLE_RENTAL' | 'CAR', signal?: AbortSignal) =>
   // OTP only routes rental bikes when walking is allowed for the legs to and from the station.
