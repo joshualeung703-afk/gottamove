@@ -109,7 +109,8 @@ export const MODE_ICON: Record<ModeId, IconKind> = {
   transit: 'metro', taxi: 'taxi', uber: 'car', bolt: 'bolt',
 }
 
-/** Icons for transit legs, keyed by OTP leg mode. */
+/** Icons for trip legs, keyed by OTP leg mode (CITYBIKE for rented bikes, SCOOTER in mixed trips). */
 export const LEG_ICON: Record<string, IconKind> = {
   BUS: 'bus', TRAM: 'tram', SUBWAY: 'metro', RAIL: 'train', FERRY: 'ferry', WALK: 'walk', BICYCLE: 'bike',
+  CITYBIKE: 'citybike', SCOOTER: 'scooter',
 }

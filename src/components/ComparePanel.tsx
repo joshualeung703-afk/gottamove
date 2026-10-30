@@ -16,15 +16,23 @@ interface Props {
   onFocusOption: (id: string) => void
   /** Slid out of the way while one option is focused. */
   hidden?: boolean
+  view: View
+  onViewChange: (view: View) => void
 }
 
-type Sort = 'fastest' | 'cheapest'
+/** Fastest and Cheapest sort the single-mode options; Mix lists trips that combine a scooter or bike with transit. */
+export type View = 'fastest' | 'cheapest' | 'mix'
+
+const VIEWS: { id: View; label: string }[] = [
+  { id: 'fastest', label: 'Fastest' },
+  { id: 'cheapest', label: 'Cheapest' },
+  { id: 'mix', label: 'Mix' },
+]
 
 // Memoised: the compass updates App many times a second, and none of that concerns the panel.
 export const ComparePanel = memo(function ComparePanel({
-  destination, groups, states, highlight, selected, onHighlight, onSelect, onFocusOption, hidden,
+  destination, groups, states, highlight, selected, onHighlight, onSelect, onFocusOption, hidden, view, onViewChange,
 }: Props) {
-  const [sort, setSort] = useState<Sort>('fastest')
   const [collapsed, setCollapsed] = useState(false)
 
   const options = useMemo(() => {
@@ -32,9 +40,19 @@ export const ComparePanel = memo(function ComparePanel({
       const s = states[g.key]
       return s?.status === 'done' ? s.options : []
     })
-    const key = (o: TripOption) => (sort === 'fastest' ? [o.durationMin, o.priceMin] : [o.priceMin, o.durationMin])
+    const key = (o: TripOption) => (view === 'cheapest' ? [o.priceMin, o.durationMin] : [o.durationMin, o.priceMin])
     return all.sort((a, b) => key(a)[0] - key(b)[0] || key(a)[1] - key(b)[1])
-  }, [groups, states, sort])
+  }, [groups, states, view])
+
+  // Mixed trips say how much sooner they get there than public transport alone.
+  const transitMin = useMemo(() => {
+    const s = states.transit
+    return s?.status === 'done' && s.options.length ? Math.min(...s.options.map((o) => o.durationMin)) : null
+  }, [states])
+  const gain = (o: TripOption) => {
+    const saved = view === 'mix' && transitMin !== null ? Math.round(transitMin - o.durationMin) : 0
+    return saved >= 1 ? `${saved} min faster than public transport` : undefined
+  }
 
   const badges = useMemo(() => {
     const out = new Map<string, string[]>()
@@ -67,9 +85,9 @@ export const ComparePanel = memo(function ComparePanel({
           <h2>{destination.label}</h2>
         </div>
         <div className="sort" role="tablist">
-          {(['fastest', 'cheapest'] as Sort[]).map((s) => (
-            <button key={s} role="tab" aria-selected={sort === s} className={sort === s ? 'on' : ''} onClick={() => setSort(s)}>
-              {s === 'fastest' ? 'Fastest' : 'Cheapest'}
+          {VIEWS.map(({ id, label }) => (
+            <button key={id} role="tab" aria-selected={view === id} className={view === id ? 'on' : ''} onClick={() => onViewChange(id)}>
+              {label}
             </button>
           ))}
         </div>
@@ -80,6 +98,7 @@ export const ComparePanel = memo(function ComparePanel({
             key={o.id}
             option={o}
             badges={badges.get(o.id) ?? []}
+            gain={gain(o)}
             highlighted={highlight === o.id}
             selected={selected === o.id}
             onHighlight={onHighlight}
@@ -96,6 +115,11 @@ export const ComparePanel = memo(function ComparePanel({
             <span className="card-sub">{error}</span>
           </li>
         ))}
+        {view === 'mix' && !options.length && !loading.length && !errors.length && (
+          <li className="card card-error">
+            <span className="card-sub">No scooter or bike combination found for this trip.</span>
+          </li>
+        )}
       </ul>
       <footer className="panel-foot">Taxi, ride-hail and scooter prices are estimates from typical Helsinki rates. Transit by HSL / Digitransit · map © OpenStreetMap contributors.</footer>
     </aside>

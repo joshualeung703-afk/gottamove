@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ComparePanel, type GroupState } from './components/ComparePanel'
+import { ComparePanel, type GroupState, type View } from './components/ComparePanel'
 import { Compass } from './components/Compass'
 import { Guidance } from './components/Guidance'
 import { SearchBox } from './components/SearchBox'
@@ -35,6 +35,7 @@ export default function App() {
   const [notice, setNotice] = useState<string | null>(null)
   const [destination, setDestination] = useState<Place | null>(null)
   const [results, setResults] = useState<Results>({})
+  const [view, setView] = useState<View>('fastest')
   const [highlight, setHighlight] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   /** Double-tapped option: only its route is drawn and the options panel steps aside. */
@@ -131,16 +132,18 @@ export default function App() {
     return () => ctrl.abort()
   }, [origin, destination])
 
+  // The Mix tab shows only the mixed trips, the other tabs everything else; the map, focus and guidance follow suit.
+  const shownGroups = useMemo(() => TRIP_GROUPS.filter((g) => !!g.mix === (view === 'mix')), [view])
   const beams = useMemo(
-    () => TRIP_GROUPS.flatMap((g) => results[g.key]?.beams ?? []),
-    [results],
+    () => shownGroups.flatMap((g) => results[g.key]?.beams ?? []),
+    [shownGroups, results],
   )
   const options = useMemo(
-    () => TRIP_GROUPS.flatMap((g) => {
+    () => shownGroups.flatMap((g) => {
       const r = results[g.key]
       return r?.status === 'done' ? r.options : []
     }),
-    [results],
+    [shownGroups, results],
   )
 
   const focusedOption = focused ? options.find((o) => o.id === focused) : undefined
@@ -181,7 +184,8 @@ export default function App() {
   const progressMemo = useRef({ key: '', along: 0 })
   const guide = useMemo(() => {
     if (!userCoord) return null
-    const option = options.find((o) => o.id === selected) ?? [...options].sort((a, b) => a.durationMin - b.durationMin)[0]
+    // Ties go to the cheaper option, as in the panel (a scooter and a bike often share one mixed route).
+    const option = options.find((o) => o.id === selected) ?? [...options].sort((a, b) => a.durationMin - b.durationMin || a.priceMin - b.priceMin)[0]
     const beam = beams.find((b) => b.id === option?.beamId)
     if (!option || !beam) return null
     // Remember progress per route, so legs that share a street don't make the position jump back and forth.
@@ -294,8 +298,10 @@ export default function App() {
       )}
       <ComparePanel
         destination={destination}
-        groups={TRIP_GROUPS}
+        groups={shownGroups}
         states={results}
+        view={view}
+        onViewChange={setView}
         highlight={highlight}
         selected={selected}
         onHighlight={setHighlight}

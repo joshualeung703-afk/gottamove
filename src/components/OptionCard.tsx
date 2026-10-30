@@ -22,6 +22,8 @@ const DOUBLE_TAP_MS = 350
 interface Props {
   option: TripOption
   badges: string[]
+  /** e.g. "6 min faster than public transport", on mixed trips. */
+  gain?: string
   highlighted: boolean
   selected: boolean
   onHighlight: (id: string | null) => void
@@ -30,9 +32,10 @@ interface Props {
   onFocusOption: (id: string) => void
 }
 
-export function OptionCard({ option: o, badges, highlighted, selected, onHighlight, onSelect, onFocusOption }: Props) {
+export function OptionCard({ option: o, badges, gain, highlighted, selected, onHighlight, onSelect, onFocusOption }: Props) {
   const meta = MODES[o.mode]
-  const firstRide = o.legs?.find((l) => l.mode !== 'WALK')
+  // Transit cards take their first vehicle's look; mixed trips keep their scooter or bike's.
+  const firstRide = o.mode === 'transit' ? o.legs?.find((l) => l.mode !== 'WALK') : undefined
   const accent = firstRide?.color ?? meta.color
   const icon = (firstRide && LEG_ICON[firstRide.mode]) ?? MODE_ICON[o.mode]
   const lastTap = useRef(0)
@@ -86,6 +89,7 @@ export function OptionCard({ option: o, badges, highlighted, selected, onHighlig
           o.subtitle && <div className="card-sub">{o.subtitle}</div>
         )}
         <div className="card-meta">
+          {gain && <span className="card-gain">{gain}</span>}
           {o.departure && o.arrival && <span>{clock(o.departure)} → {clock(o.arrival)}</span>}
           {o.note && <span>{o.note}</span>}
           <span>{o.co2g === 0 ? 'Zero emissions' : `~${o.co2g >= 1000 ? `${(o.co2g / 1000).toFixed(1)} kg` : `${o.co2g} g`} CO₂`}</span>
